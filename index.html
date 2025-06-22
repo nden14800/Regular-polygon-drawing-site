@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正多角形描画ツール</title>
+    <!-- Google Fonts - Robotoのインポート -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSSのCDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* デフォルトのTailwind設定を拡張し、ダークモードのテーマを定義 */
+        :root {
+            --background-light: #f3f4f6; /* light-gray-100 */
+            --text-light: #1f2937;       /* gray-900 */
+            --border-light: #d1d5db;     /* gray-300 */
+            --canvas-bg-light: #ffffff;  /* white */
+            --canvas-border-light: #9ca3af; /* gray-400 */
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --background-dark: #1f2937;  /* gray-900 */
+                --text-dark: #f3f4f6;        /* gray-100 */
+                --border-dark: #4b5563;      /* gray-600 */
+                --canvas-bg-dark: #374151;   /* gray-700 */
+                --canvas-border-dark: #6b7280; /* gray-500 */
+            }
+        }
+
+        /* カスタムTailwind設定 */
+        html.light {
+            background-color: var(--background-light);
+            color: var(--text-light);
+        }
+        html.dark {
+            background-color: var(--background-dark);
+            color: var(--text-dark);
+        }
+        body {
+            font-family: 'Roboto', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        canvas {
+            border: 2px solid;
+            display: block;
+            margin: 0 auto;
+            border-radius: 0.75rem; /* rounded-xl */
+        }
+        html.light canvas {
+            background-color: var(--canvas-bg-light);
+            border-color: var(--canvas-border-light);
+        }
+        html.dark canvas {
+            background-color: var(--canvas-bg-dark);
+            border-color: var(--canvas-border-dark);
+        }
+
+        /* スライダーのスタイル調整 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 0.5rem; /* h-2 */
+            background: var(--border-light);
+            outline: none;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+            border-radius: 9999px; /* rounded-full */
+        }
+        html.dark input[type="range"] {
+            background: var(--border-dark);
+        }
+
+        input[type="range"]:hover {
+            opacity: 1;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 1.25rem; /* w-5 */
+            height: 1.25rem; /* h-5 */
+            background: #2563eb; /* blue-600 */
+            cursor: pointer;
+            border-radius: 9999px; /* rounded-full */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 1.25rem; /* w-5 */
+            height: 1.25rem; /* h-5 */
+            background: #2563eb; /* blue-600 */
+            cursor: pointer;
+            border-radius: 9999px; /* rounded-full */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+    <div class="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg w-full max-w-md mx-auto my-8">
+        <h1 class="text-3xl font-bold text-center mb-6 text-gray-900 dark:text-gray-100">正多角形描画ツール</h1>
+
+        <div class="mb-6">
+            <label for="sides" class="block text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">辺の数: <span id="sidesValue">5</span></label>
+            <input type="range" id="sides" min="3" max="100" value="5" class="w-full">
+        </div>
+
+        <canvas id="polygonCanvas" class="w-full max-w-lg aspect-square"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('polygonCanvas');
+        const ctx = canvas.getContext('2d');
+        const sidesSlider = document.getElementById('sides');
+        const sidesValueSpan = document.getElementById('sidesValue');
+
+        // キャンバスのサイズをウィンドウサイズに合わせて調整する関数
+        function resizeCanvas() {
+            // 親要素の幅に合わせてキャンバスの論理サイズを設定
+            const parentWidth = canvas.parentElement.clientWidth;
+            // 最大幅を制限し、アスペクト比を維持
+            const size = Math.min(parentWidth * 0.9, 500); // 最大500pxに制限、親要素の90%
+            canvas.width = size;
+            canvas.height = size;
+            drawPolygon(); // サイズ変更後に再描画
+        }
+
+        // 正多角形を描画する関数
+        function drawPolygon() {
+            const numSides = parseInt(sidesSlider.value);
+            const size = Math.min(canvas.width, canvas.height); // キャンバスの小さい方の辺を基準に
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = (size / 2) * 0.8; // キャンバスのサイズに対して80%の半径で描画
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // キャンバスをクリア
+
+            ctx.beginPath();
+            // 描画スタイルをテーマに合わせて設定
+            ctx.strokeStyle = document.documentElement.classList.contains('dark') ? 'rgba(243, 244, 246, 0.8)' : 'rgba(31, 41, 55, 0.8)'; // text-gray-100 or text-gray-900 with transparency
+            ctx.lineWidth = 3;
+            ctx.fillStyle = document.documentElement.classList.contains('dark') ? 'rgba(107, 114, 128, 0.3)' : 'rgba(209, 213, 219, 0.3)'; // gray-500 or gray-300 with transparency
+
+            for (let i = 0; i < numSides; i++) {
+                const angle = (i * 2 * Math.PI / numSides) - (Math.PI / 2); // 上を向いた頂点から開始
+                const x = centerX + radius * Math.cos(angle);
+                const y = centerY + radius * Math.sin(angle);
+
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        // デバイスのテーマを検出し、bodyのクラスを設定する関数
+        function setDeviceTheme() {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.classList.add('dark');
+                document.documentElement.classList.remove('light');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.classList.add('light');
+            }
+            drawPolygon(); // テーマ変更後にキャンバスを再描画して色を更新
+        }
+
+        // イベントリスナーの設定
+        sidesSlider.addEventListener('input', () => {
+            sidesValueSpan.textContent = sidesSlider.value;
+            drawPolygon();
+        });
+
+        // ウィンドウのリサイズ時にキャンバスを調整
+        window.addEventListener('resize', resizeCanvas);
+
+        // 初期ロード時の設定
+        window.onload = function() {
+            setDeviceTheme(); // デバイスのテーマを設定
+            resizeCanvas();   // キャンバスの初期サイズを設定し、描画
+        };
+
+        // prefers-color-schemeの変更をリッスン
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', setDeviceTheme);
+    </script>
+</body>
+</html>
